@@ -1,4 +1,3 @@
-from django.http.multipartparser import MultiPartParser
 from django.utils import timezone
 from rest_framework import serializers, status, generics, permissions, request
 from rest_framework.exceptions import ValidationError
@@ -6,10 +5,10 @@ from rest_framework.parsers import FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework_jwt.settings import api_settings
 from user.models import User
-from .models import Notes, Labels
+from notes.models import Notes
 import logging
 from rest_framework.views import APIView
-from .serializers import NotesSerializer, LabelSerializer
+from notes.serializers import NotesSerializer, PinSerializer, TrashSerializer
 
 logger = logging.getLogger('django')
 
@@ -31,18 +30,41 @@ class CreateAPIView(generics.GenericAPIView):
     def get(self, request):
         user_id = request.user.id
         try:
-            note = Notes.objects.filter(user=request.user)
+            note = Notes.objects.filter(user=request.user, is_trash=False,
+                                        is_archive=False).order_by('-is_pinned')
             serializer = NotesSerializer(note, many=True)
             logger.info('Getting the notes data on %s', timezone.now())
             serialized_data = serializer.data
+            notes = Notes.objects.filter(user_id=user_id, is_trash=False, is_archive=False)
+            #print(notes, "Notes object")
+            if not notes:
+                raise Exception("Notes info not found")
+            if notes:
+                notes = Notes.objects.filter().order_by('-is_pinned', '-modified_dt').values()
+                #print(notes)
+                results = []
+                # data = notes.to_dict()
+                # label = data.get('label')
+                # _label = []
+                for note in notes:
+                    print(note, "For loop note")
+                    data = note.to_dict()
+                    label = data.get('label')
+                    print(label, "Lables updated")
+                    _label = []
+                    for lab in label.values():
+                        _label.append(lab)
+                        data['label'] = _label
+                results.append(data)
             logger.info("User successfully retrieve the data")
             return Response({'success': True,
                              'message': "Successfully retrieve the notes",
-                             'data': serialized_data}, status=status.HTTP_200_OK)
+                             'data': serialized_data, 'Data_recent': results}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(e)
             return Response({'success': False,
                              'message': "Something went Wrong, User is not exists",
+                             'data': str(e)
                              }, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
@@ -136,52 +158,6 @@ class UpdateNotesAPIView(generics.GenericAPIView):
                              }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LabelAPIView(generics.GenericAPIView):
-    serializer_class = LabelSerializer
-    queryset = Labels.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        try:
-            data = Labels.objects.all()
-            serializer = LabelSerializer(data, many=True)
-            serialized_data = serializer.data
-            return Response({'status': True,
-                             'message': 'Labels successfully Retrieve',
-                             'data': serialized_data,
-                             }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'success': False,
-                             'message': 'Something went wrong',
-                             'data': str(e)
-                             }, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request):
-        user = request.user
-        try:
-            serializer = LabelSerializer(data=request.data, partial=True)
-            serializer.is_valid()
-            serializer.save(user_id=user.id)
-            data = serializer.data
-            return Response({'success': True,
-                             'message': "Label created successfully",
-                             'data': data
-                             }, status=status.HTTP_201_CREATED)
-
-        except ValidationError as e:
-            return Response({'success': False,
-                             'message': "Validation Error",
-                             'data': str(e)
-                             }, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as e:
-            return Response({'success': False,
-                             'message': "Something Went wrong",
-                             'data': str(e)
-                             }, status=status.HTTP_400_BAD_REQUEST)
-
-
 class ArchiveNotesAPIView(generics.GenericAPIView):
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
@@ -212,6 +188,26 @@ class ArchiveNotesAPIView(generics.GenericAPIView):
 
 
 class TrashNotesAPIView(generics.GenericAPIView):
+    serializer_class = TrashSerializer
+    queryset = Notes.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # user = request.user
+            trash = Notes.objects.filter(user=request.user, is_trash=True)
+            serializer = TrashSerializer(trash, many=True)
+            serializer_data = serializer.data
+            return Response({"success": True,
+                             "msg": "Getting all the Trash notes Successfully",
+                             "data": serializer_data
+                             }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"success": False,
+                             "msg": "Something went wrong",
+                             "data": str(e)
+                             }, status=status.HTTP_400_BAD_REQUEST)
+
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
@@ -237,7 +233,7 @@ class TrashNotesAPIView(generics.GenericAPIView):
                              }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RemoveTrashNotesAPIView(generics.GenericAPIView):
+class RestoreTrashNotesAPIView(generics.GenericAPIView):
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
@@ -246,7 +242,7 @@ class RemoveTrashNotesAPIView(generics.GenericAPIView):
             if note.is_trash:
                 note.is_trash = False
                 note.save()
-                logger.info("Notes is Removed from Trash")
+                logger.info("Notes is Restore from Trash")
                 return Response({'success': True,
                                  'message': 'Notes is Removed from Trash successfully'
                                  }, status=status.HTTP_200_OK)
@@ -264,6 +260,24 @@ class RemoveTrashNotesAPIView(generics.GenericAPIView):
 
 
 class PinNotesAPIView(generics.GenericAPIView):
+    serializer_class = PinSerializer
+    queryset = Notes.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            pin = Notes.objects.filter(user=request.user, is_pinned=True)
+            serializer = PinSerializer(pin, many=True)
+            return Response({"success": True,
+                             "msg": 'Retrieve all pinned notes',
+                             "data": serializer.data
+                             }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"success": False,
+                             "msg": "Something went wrong",
+                             "data": str(e)
+                             }, status=status.HTTP_400_BAD_REQUEST)
+
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk

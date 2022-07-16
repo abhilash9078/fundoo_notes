@@ -1,17 +1,6 @@
 from django.db import models
 from user.models import User
-
-
-class Labels(models.Model):
-    label = models.CharField(max_length=150)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.label
-
-    REQUIRED_FIELDS = ['label']
+from labels.models import Labels
 
 
 class Notes(models.Model):
@@ -33,4 +22,11 @@ class Notes(models.Model):
 
     def __str__(self):
         return self.title
+
+    def to_json(self):
+        notes = dict()
+        notes['title'] = self.title
+        notes['description'] = self.description
+        notes['label'] = self.label
+        return notes
 

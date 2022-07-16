@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from notes.models import Notes, Labels
+from notes.models import Notes
 
 
 class NotesSerializer(serializers.ModelSerializer):
@@ -10,16 +10,22 @@ class NotesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notes
         fields = '__all__'
-        read_only_fields = ['id', 'user', 'isTrash']
+        read_only_fields = ['id', 'user', 'is_trash']
 
 
-class LabelSerializer(serializers.ModelSerializer):
-
-    label = serializers.CharField(min_length=2, max_length=100, required=True)
-
+class TrashSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Labels
-        fields = ['label']
-        read_only_fields = ['id', 'label_id']
-        REQUIRED_FIELDS = ['label']
+        model = Notes
+        fields = ['id', 'title', 'description', 'is_trash']
+        read_only_fields = ['id', 'title']
+
+
+class PinSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notes
+        fields = ['id', 'title', 'description', 'is_pinned']
+        read_only_fields = ['id', 'title']
+
+
+
 
