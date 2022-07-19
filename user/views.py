@@ -3,7 +3,8 @@ from rest_framework import status
 import logging
 from rest_framework.views import APIView
 from user.serializers import SendForgotPasswordResetEmailSerializer, UserChangePasswordSerializer,\
-    UserLoginSerializer, UserForgotPasswordSerializer, UserProfileSerializer, UserRegistrationSerializer
+    UserLoginSerializer, UserForgotPasswordSerializer, UserProfileSerializer, UserRegistrationSerializer, \
+    UserProfileVerificationSerializer, UserProfileVerificationEmailSerializer
 from django.contrib.auth import authenticate
 from user.renderers import UserRenderer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -30,11 +31,30 @@ class UserRegistrationView(APIView):
             user = serializer.save()
             token = get_tokens_for_user(user)
             logger.info("User successfully Registered ")
-            return Response({'success': True, 'message': 'Registration Successful',
+            activate_serializer = UserProfileVerificationEmailSerializer(data=request.data)
+            activate_serializer.is_valid(raise_exception=True)
+            logger.info("Verification email send successfully ")
+            return Response({'success': True, 'message': 'Registration Successful, Please verified your Email',
                              'data': {'token': token}}, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.exception(e)
             return Response({'success': False, 'message': 'Registration Unsuccessful, Something went wrong',
+                             'data': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserProfileVerificationView(APIView):
+    renderer_classes = [UserRenderer]
+
+    def post(self, request, uid, format=None):
+        try:
+            serializer = UserProfileVerificationSerializer(data=request.data, context={'uid': uid})
+            serializer.is_valid(raise_exception=True)
+            logger.info("User Profile is Successfully verified ")
+            return Response({'success': True,
+                             'msg': 'User Profile is Successfully verified '}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(e)
+            return Response({'success': False, 'message': 'Something Went Wrong',
                              'data': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

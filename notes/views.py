@@ -1,4 +1,7 @@
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework import serializers, status, generics, permissions, request
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, JSONParser
@@ -7,10 +10,13 @@ from rest_framework_jwt.settings import api_settings
 from user.models import User
 from notes.models import Notes
 import logging
+from django.core.cache import cache
 from rest_framework.views import APIView
 from notes.serializers import NotesSerializer, PinSerializer, TrashSerializer
+from fundoo_notes import settings
 
 logger = logging.getLogger('django')
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 
 def get_user(token):
@@ -27,39 +33,24 @@ class CreateAPIView(generics.GenericAPIView):
     queryset = Notes.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
+    @method_decorator(cache_page(CACHE_TTL))
     def get(self, request):
         user_id = request.user.id
+        username = request.user.name
         try:
+            cache_key = str(username) + str(user_id)
             note = Notes.objects.filter(user=request.user, is_trash=False,
                                         is_archive=False).order_by('-is_pinned')
             serializer = NotesSerializer(note, many=True)
             logger.info('Getting the notes data on %s', timezone.now())
             serialized_data = serializer.data
-            notes = Notes.objects.filter(user_id=user_id, is_trash=False, is_archive=False)
-            #print(notes, "Notes object")
-            if not notes:
-                raise Exception("Notes info not found")
-            if notes:
-                notes = Notes.objects.filter().order_by('-is_pinned', '-modified_dt').values()
-                #print(notes)
-                results = []
-                # data = notes.to_dict()
-                # label = data.get('label')
-                # _label = []
-                for note in notes:
-                    print(note, "For loop note")
-                    data = note.to_dict()
-                    label = data.get('label')
-                    print(label, "Lables updated")
-                    _label = []
-                    for lab in label.values():
-                        _label.append(lab)
-                        data['label'] = _label
-                results.append(data)
+            cache.set(cache_key, note)
+            print(cache_key)
+            
             logger.info("User successfully retrieve the data")
             return Response({'success': True,
                              'message': "Successfully retrieve the notes",
-                             'data': serialized_data, 'Data_recent': results}, status=status.HTTP_200_OK)
+                             'data': serialized_data, 'Data_recent': 'results'}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(e)
             return Response({'success': False,
@@ -69,30 +60,31 @@ class CreateAPIView(generics.GenericAPIView):
 
     def post(self, request):
         user = request.user
+        label = request.data['label']
+
         try:
             serializer = NotesSerializer(data=request.data, partial=True)
+            # if label is None:
+            #     request.data['label'] = serializer.data['label']
             serializer.is_valid()
             serializer.save(user_id=user.id)
             data = serializer.data
             logger.info("Notes created successfully")
-            return Response({
-                'success': True,
-                'message': "Notes Create Successfully",
-                'data': data
-            }, status=status.HTTP_201_CREATED)
+            return Response({'success': True,
+                             'message': "Notes Create Successfully",
+                             'data': data
+                             }, status=status.HTTP_201_CREATED)
 
         except ValidationError as e:
             logger.error(e)
-            return Response({
-                'success': False,
-                'message': f"Some Validation error is happened{e}",
-            }, status=status.HTTP_403_FORBIDDEN)
+            return Response({'success': False,
+                             'message': f"Some Validation error is happened{e}",
+                             }, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
-            response = {
-                'success': False,
-                'message': "Something went wrong", }
             logger.exception(e)
-            return Response(response, status=status.HTTP_417_EXPECTATION_FAILED)
+            return Response({'success': False,
+                             'message': "Something went wrong",
+                             'data': str(e)}, status=status.HTTP_417_EXPECTATION_FAILED)
 
     def delete(self, request, pk):
         try:

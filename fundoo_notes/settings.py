@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'user',
     'notes',
     'labels',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -160,7 +161,7 @@ JWT_SECRET_KEY = 'JWT_SECRET_KEY'
 
 
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
+EMAIL_HOST_PASSWORD = 'fgckgvjbkkhlrnid'
 EMAIL_PORT = config('EMAIL_PORT')
 EMAIL_USE_TLS = True
 EMAIL_HOST = config('EMAIL_HOST')
@@ -191,4 +192,18 @@ LOGGING = {
         },
     }
 }
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+CACHE_TTL = 60 * 1
+
+
 

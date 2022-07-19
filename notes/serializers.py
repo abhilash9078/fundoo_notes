@@ -1,5 +1,4 @@
 from rest_framework import serializers
-
 from notes.models import Notes
 
 
@@ -11,6 +10,15 @@ class NotesSerializer(serializers.ModelSerializer):
         model = Notes
         fields = '__all__'
         read_only_fields = ['id', 'user', 'is_trash']
+
+    def create(self, validated_data):
+        collaborator = validated_data.pop('collaborator')
+        label = validated_data.pop('label')
+        note = Notes.objects.create(**validated_data)
+        note.collaborator.set(collaborator)
+        note.label.set(label)
+        note.save()
+        return note
 
 
 class TrashSerializer(serializers.ModelSerializer):

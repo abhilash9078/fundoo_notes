@@ -64,3 +64,17 @@ class LabelAPIView(generics.GenericAPIView):
                              'message': "Something Went wrong",
                              'data': str(e)
                              }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            data = Labels.objects.get(pk=pk)
+            data.delete()
+            return Response({'success': True,
+                             'message': 'Successfully Deleted Data',
+                             }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'success': False,
+                             'message': 'Something went wrong',
+                             'data': str(e)
+                             }, status=status.HTTP_400_BAD_REQUEST)
+
