@@ -9,6 +9,8 @@ from django.contrib.auth import authenticate
 from user.renderers import UserRenderer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 logger = logging.getLogger('django')
 
@@ -24,6 +26,15 @@ def get_tokens_for_user(user):
 class UserRegistrationView(APIView):
     renderer_classes = [UserRenderer]
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description="email"),
+            'name': openapi.Schema(type=openapi.TYPE_STRING, description="name"),
+            'password': openapi.Schema(type=openapi.TYPE_STRING, description="password"),
+            'password2': openapi.Schema(type=openapi.TYPE_STRING, description="confirm_password")
+        }
+    ))
     def post(self, request, format=None):
         try:
             serializer = UserRegistrationSerializer(data=request.data)
@@ -61,6 +72,14 @@ class UserProfileVerificationView(APIView):
 class UserLoginView(APIView):
     renderer_classes = [UserRenderer]
 
+    @swagger_auto_schema(request_body=UserLoginSerializer)
+    # @swagger_auto_schema(request_body=openapi.Schema(
+    #     type=openapi.TYPE_OBJECT,
+    #     properties={
+    #         'email': openapi.Schema(type=openapi.TYPE_STRING, description="email"),
+    #         'password': openapi.Schema(type=openapi.TYPE_STRING, description="password")
+    #     }
+    # ))
     def post(self, request, format=None):
         try:
             serializer = UserLoginSerializer(data=request.data)
@@ -90,6 +109,7 @@ class UserProfileView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(request_body=UserProfileSerializer)
     def get(self, request, format=None):
         try:
             serializer = UserProfileSerializer(request.user)
@@ -106,6 +126,7 @@ class UserChangePasswordView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(request_body=UserChangePasswordSerializer)
     def post(self, request, format=None):
         try:
             serializer = UserChangePasswordSerializer(data=request.data, context={'user': request.user})
@@ -123,6 +144,12 @@ class UserChangePasswordView(APIView):
 class SendForgotPasswordResetEmailView(APIView):
     renderer_classes = [UserRenderer]
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description="email")
+        }
+    ))
     def post(self, request, format=None):
         try:
             serializer = SendForgotPasswordResetEmailSerializer(data=request.data)
@@ -141,6 +168,7 @@ class SendForgotPasswordResetEmailView(APIView):
 class UserForgotPasswordResetView(APIView):
     renderer_classes = [UserRenderer]
 
+    @swagger_auto_schema(request_body=UserForgotPasswordSerializer)
     def post(self, request, uid, token, format=None):
         try:
             serializer = UserForgotPasswordSerializer(data=request.data, context={'uid': uid, 'token': token})

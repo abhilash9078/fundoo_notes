@@ -42,7 +42,7 @@ class UserProfileVerificationEmailSerializer(serializers.Serializer):
             link = ' http://127.0.0.1:8000/user/verify_account/' + uid + '/'
             body = 'Click Following Link to Activate Your Account ' + link
             data = {
-                'subject': 'Reset Your Password',
+                'subject': 'Activate Your Account',
                 'body': body,
                 'to_email': user.email
             }

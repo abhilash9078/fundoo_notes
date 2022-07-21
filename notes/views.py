@@ -10,8 +10,10 @@ from rest_framework_jwt.settings import api_settings
 from user.models import User
 from notes.models import Notes
 import logging
+from rest_framework.decorators import api_view
 from django.core.cache import cache
-from rest_framework.views import APIView
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from notes.serializers import NotesSerializer, PinSerializer, TrashSerializer
 from fundoo_notes import settings
 
@@ -33,24 +35,26 @@ class CreateAPIView(generics.GenericAPIView):
     queryset = Notes.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('TOKEN', openapi.IN_HEADER, "token", type=openapi.TYPE_STRING)
+    ])
     @method_decorator(cache_page(CACHE_TTL))
     def get(self, request):
         user_id = request.user.id
         username = request.user.name
         try:
-            cache_key = str(username) + str(user_id)
+            cache_key = str(user_id)
             note = Notes.objects.filter(user=request.user, is_trash=False,
                                         is_archive=False).order_by('-is_pinned')
             serializer = NotesSerializer(note, many=True)
             logger.info('Getting the notes data on %s', timezone.now())
             serialized_data = serializer.data
-            cache.set(cache_key, note)
-            print(cache_key)
-            
+            c_data = cache.get(cache_key)
+
             logger.info("User successfully retrieve the data")
             return Response({'success': True,
                              'message': "Successfully retrieve the notes",
-                             'data': serialized_data, 'Data_recent': 'results'}, status=status.HTTP_200_OK)
+                             'data': serialized_data, 'Data_recent': c_data}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(e)
             return Response({'success': False,
@@ -58,17 +62,28 @@ class CreateAPIView(generics.GenericAPIView):
                              'data': str(e)
                              }, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(manual_parameters=[
+        openapi.Parameter('TOKEN', openapi.IN_HEADER, "token", type=openapi.TYPE_STRING)
+    ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="title"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="description")
+            }
+        ))
     def post(self, request):
         user = request.user
         label = request.data['label']
+        user_id = request.user.id
 
         try:
+            cache_key = str(user_id)
             serializer = NotesSerializer(data=request.data, partial=True)
-            # if label is None:
-            #     request.data['label'] = serializer.data['label']
             serializer.is_valid()
             serializer.save(user_id=user.id)
             data = serializer.data
+            cache.set(cache_key, data)
             logger.info("Notes created successfully")
             return Response({'success': True,
                              'message': "Notes Create Successfully",
@@ -88,8 +103,10 @@ class CreateAPIView(generics.GenericAPIView):
 
     def delete(self, request, pk):
         try:
+            cache_key = str(pk)
             data = Notes.objects.get(pk=pk)
             data.delete()
+            cache.delete(cache_key)
             logger.info("Notes deleted successfully")
             return Response({'success': True,
                              'message': "Notes deleted successfully",
@@ -116,8 +133,10 @@ class UpdateNotesAPIView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         pk = self.kwargs.get('pk')
+        cache_key = str(pk)
         note = self.get_objects(pk=pk)
         serializer = NotesSerializer(note)
+        cache.update(cache_key, serializer)
         logger.info("Successfully got the notes for update ")
         return Response({'success': True,
                          'message': "Successfully got the notes",
@@ -151,6 +170,12 @@ class UpdateNotesAPIView(generics.GenericAPIView):
 
 
 class ArchiveNotesAPIView(generics.GenericAPIView):
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'note_id': openapi.Schema(type=openapi.TYPE_STRING, description="note id")
+        }
+    ))
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
@@ -200,6 +225,12 @@ class TrashNotesAPIView(generics.GenericAPIView):
                              "data": str(e)
                              }, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'note_id': openapi.Schema(type=openapi.TYPE_STRING, description="note id")
+        }
+    ))
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
@@ -226,6 +257,12 @@ class TrashNotesAPIView(generics.GenericAPIView):
 
 
 class RestoreTrashNotesAPIView(generics.GenericAPIView):
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'note_id': openapi.Schema(type=openapi.TYPE_STRING, description="note id")
+        }
+    ))
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
@@ -270,6 +307,12 @@ class PinNotesAPIView(generics.GenericAPIView):
                              "data": str(e)
                              }, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'note_id': openapi.Schema(type=openapi.TYPE_STRING, description="note id")
+        }
+    ))
     def put(self, request, *args, **kwar):
         pk = self.kwargs.get('pk')
         note_id = pk
