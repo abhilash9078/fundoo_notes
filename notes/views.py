@@ -22,6 +22,9 @@ CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 
 def get_user(token):
+    """
+    function for checking and verifying token for valid user
+    """
     jwt_decode_handler = api_settings.JWT_DECODE_HANDLER
     new_token = str(token).split("Bearer ")[1]
     encoded_token = jwt_decode_handler(new_token)
@@ -31,6 +34,9 @@ def get_user(token):
 
 
 class CreateAPIView(generics.GenericAPIView):
+    """
+    API for creating Notes and performing all CRUD operation
+    """
     serializer_class = NotesSerializer
     queryset = Notes.objects.all()
     permission_classes = [permissions.IsAuthenticated]
@@ -40,6 +46,9 @@ class CreateAPIView(generics.GenericAPIView):
     ])
     @method_decorator(cache_page(CACHE_TTL))
     def get(self, request):
+        """
+        function for getting all the notes of that user
+        """
         user_id = request.user.id
         username = request.user.name
         try:
@@ -73,6 +82,9 @@ class CreateAPIView(generics.GenericAPIView):
             }
         ))
     def post(self, request):
+        """
+        function for creating notes for a particular user
+        """
         user = request.user
         label = request.data['label']
         user_id = request.user.id
@@ -102,6 +114,9 @@ class CreateAPIView(generics.GenericAPIView):
                              'data': str(e)}, status=status.HTTP_417_EXPECTATION_FAILED)
 
     def delete(self, request, pk):
+        """
+        function for deleting note
+        """
         try:
             cache_key = str(pk)
             data = Notes.objects.get(pk=pk)
@@ -120,10 +135,16 @@ class CreateAPIView(generics.GenericAPIView):
 
 
 class UpdateNotesAPIView(generics.GenericAPIView):
+    """
+    API for updating notes
+    """
     serializer_class = NotesSerializer
     data = Notes.objects.all()
 
     def get_objects(self, pk):
+        """
+        function for get the note id for updating
+        """
         try:
             return Notes.objects.get(pk=pk)
         except Exception:
@@ -132,6 +153,9 @@ class UpdateNotesAPIView(generics.GenericAPIView):
                              }, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
+        """
+        function for checking user details for update
+        """
         pk = self.kwargs.get('pk')
         cache_key = str(pk)
         note = self.get_objects(pk=pk)
@@ -144,6 +168,9 @@ class UpdateNotesAPIView(generics.GenericAPIView):
                          }, status=status.HTTP_200_OK)
 
     def put(self, request, *args, **kwargs):
+        """
+        function for updating notes for valid user
+        """
         pk = self.kwargs.get('pk')
         note = self.get_objects(pk=pk)
         serializer = NotesSerializer(note, data=request.data)
@@ -170,6 +197,9 @@ class UpdateNotesAPIView(generics.GenericAPIView):
 
 
 class ArchiveNotesAPIView(generics.GenericAPIView):
+    """
+    API for make notes Archive
+    """
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
@@ -177,6 +207,9 @@ class ArchiveNotesAPIView(generics.GenericAPIView):
         }
     ))
     def put(self, request, *args, **kwar):
+        """
+        function for making notes to archive notes
+        """
         pk = self.kwargs.get('pk')
         note_id = pk
         note = Notes.objects.get(id=note_id)
@@ -205,11 +238,17 @@ class ArchiveNotesAPIView(generics.GenericAPIView):
 
 
 class TrashNotesAPIView(generics.GenericAPIView):
+    """
+    API for moving notes to trash
+    """
     serializer_class = TrashSerializer
     queryset = Notes.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """
+        function for getting all trash notes
+        """
         try:
             # user = request.user
             trash = Notes.objects.filter(user=request.user, is_trash=True)
@@ -232,6 +271,9 @@ class TrashNotesAPIView(generics.GenericAPIView):
         }
     ))
     def put(self, request, *args, **kwar):
+        """
+        function for making notes to trash notes
+        """
         pk = self.kwargs.get('pk')
         note_id = pk
         note = Notes.objects.get(id=note_id)
@@ -257,6 +299,9 @@ class TrashNotesAPIView(generics.GenericAPIView):
 
 
 class RestoreTrashNotesAPIView(generics.GenericAPIView):
+    """
+    API for restoring notes from trash
+    """
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
@@ -264,6 +309,9 @@ class RestoreTrashNotesAPIView(generics.GenericAPIView):
         }
     ))
     def put(self, request, *args, **kwar):
+        """
+        function to restore corresponding trash note
+        """
         pk = self.kwargs.get('pk')
         note_id = pk
         note = Notes.objects.get(id=note_id)
@@ -289,11 +337,17 @@ class RestoreTrashNotesAPIView(generics.GenericAPIView):
 
 
 class PinNotesAPIView(generics.GenericAPIView):
+    """
+    API for pin a note
+    """
     serializer_class = PinSerializer
     queryset = Notes.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """
+        function for getting all the notes
+        """
         try:
             pin = Notes.objects.filter(user=request.user, is_pinned=True)
             serializer = PinSerializer(pin, many=True)
@@ -314,6 +368,9 @@ class PinNotesAPIView(generics.GenericAPIView):
         }
     ))
     def put(self, request, *args, **kwar):
+        """
+        function for pin a note 
+        """
         pk = self.kwargs.get('pk')
         note_id = pk
         note = Notes.objects.get(id=note_id)

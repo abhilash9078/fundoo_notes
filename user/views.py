@@ -16,6 +16,9 @@ logger = logging.getLogger('django')
 
 
 def get_tokens_for_user(user):
+    """
+    function for creating token for user
+    """
     refresh = RefreshToken.for_user(user)
     return {
         'refresh': str(refresh),
@@ -24,6 +27,9 @@ def get_tokens_for_user(user):
 
 
 class UserRegistrationView(APIView):
+    """
+    API for performing user registration
+    """
     renderer_classes = [UserRenderer]
 
     @swagger_auto_schema(request_body=openapi.Schema(
@@ -36,6 +42,9 @@ class UserRegistrationView(APIView):
         }
     ))
     def post(self, request, format=None):
+        """
+        post method for registering a user
+        """
         try:
             serializer = UserRegistrationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -54,9 +63,15 @@ class UserRegistrationView(APIView):
 
 
 class UserProfileVerificationView(APIView):
+    """
+    API for user account verification
+    """
     renderer_classes = [UserRenderer]
 
     def post(self, request, uid, format=None):
+        """
+        post method for verifying user account
+        """
         try:
             serializer = UserProfileVerificationSerializer(data=request.data, context={'uid': uid})
             serializer.is_valid(raise_exception=True)
@@ -70,17 +85,16 @@ class UserProfileVerificationView(APIView):
 
 
 class UserLoginView(APIView):
+    """
+    API for performing login operation
+    """
     renderer_classes = [UserRenderer]
 
     @swagger_auto_schema(request_body=UserLoginSerializer)
-    # @swagger_auto_schema(request_body=openapi.Schema(
-    #     type=openapi.TYPE_OBJECT,
-    #     properties={
-    #         'email': openapi.Schema(type=openapi.TYPE_STRING, description="email"),
-    #         'password': openapi.Schema(type=openapi.TYPE_STRING, description="password")
-    #     }
-    # ))
     def post(self, request, format=None):
+        """
+        post method for checking login operation
+        """
         try:
             serializer = UserLoginSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -106,11 +120,17 @@ class UserLoginView(APIView):
 
 
 class UserProfileView(APIView):
+    """
+    API for checking user details
+    """
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(request_body=UserProfileSerializer)
     def get(self, request, format=None):
+        """
+        get function for checking user details
+        """
         try:
             serializer = UserProfileSerializer(request.user)
             logger.info("User successfully access the profile")
@@ -123,11 +143,17 @@ class UserProfileView(APIView):
 
 
 class UserChangePasswordView(APIView):
+    """
+    API for user change password with login and token
+    """
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(request_body=UserChangePasswordSerializer)
     def post(self, request, format=None):
+        """
+        function for change user password
+        """
         try:
             serializer = UserChangePasswordSerializer(data=request.data, context={'user': request.user})
             serializer.is_valid(raise_exception=True)
@@ -142,6 +168,9 @@ class UserChangePasswordView(APIView):
 
 
 class SendForgotPasswordResetEmailView(APIView):
+    """
+    API for sending reset mail for forgot password
+    """
     renderer_classes = [UserRenderer]
 
     @swagger_auto_schema(request_body=openapi.Schema(
@@ -151,6 +180,9 @@ class SendForgotPasswordResetEmailView(APIView):
         }
     ))
     def post(self, request, format=None):
+        """
+        function for sending mail for reset password
+        """
         try:
             serializer = SendForgotPasswordResetEmailSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -166,10 +198,16 @@ class SendForgotPasswordResetEmailView(APIView):
 
 
 class UserForgotPasswordResetView(APIView):
+    """
+    API for reset password for forget password user
+    """
     renderer_classes = [UserRenderer]
 
     @swagger_auto_schema(request_body=UserForgotPasswordSerializer)
     def post(self, request, uid, token, format=None):
+        """
+        function for changing user password
+        """
         try:
             serializer = UserForgotPasswordSerializer(data=request.data, context={'uid': uid, 'token': token})
             serializer.is_valid(raise_exception=True)
