@@ -2,15 +2,13 @@ from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
-from rest_framework import serializers, status, generics, permissions, request
+from rest_framework import status, generics, permissions
 from rest_framework.exceptions import ValidationError
-from rest_framework.parsers import FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework_jwt.settings import api_settings
 from user.models import User
 from notes.models import Notes
 import logging
-from rest_framework.decorators import api_view
 from django.core.cache import cache
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -147,9 +145,9 @@ class UpdateNotesAPIView(generics.GenericAPIView):
         """
         try:
             return Notes.objects.get(pk=pk)
-        except Exception:
+        except Exception as e:
             return Response({'success': False,
-                             'message': "Something Went Wrong",
+                             'message': f"Something Went Wrong {e}",
                              }, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
@@ -250,7 +248,6 @@ class TrashNotesAPIView(generics.GenericAPIView):
         function for getting all trash notes
         """
         try:
-            # user = request.user
             trash = Notes.objects.filter(user=request.user, is_trash=True)
             serializer = TrashSerializer(trash, many=True)
             serializer_data = serializer.data

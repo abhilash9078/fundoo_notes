@@ -1,7 +1,6 @@
 from django.test import TestCase
 from django.urls import resolve
 from user.models import User
-# from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework import status
 
@@ -31,13 +30,13 @@ class TestLoginRegistrationView(TestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_login(self):
-        self.credentials = {
+    def test_login_with_correct_input_success(self):
+        credentials = {
             'email': 'admin@gmail.com',
             'password': '12345678'}
-        User.objects.create_user(**self.credentials)
+        User.objects.create_user(**credentials)
         url = reverse('login')
-        response = self.client.post(url, self.credentials, follow=True)
+        response = self.client.post(url, credentials, follow=True)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 

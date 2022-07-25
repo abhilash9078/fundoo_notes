@@ -12,6 +12,9 @@ logger = logging.getLogger('django')
 
 
 def get_user(token):
+    """
+    Function for creating and validation of token
+    """
     jwt_decode_handler = api_settings.JWT_DECODE_HANDLER
     new_token = str(token).split("Bearer ")[1]
     encoded_token = jwt_decode_handler(new_token)
@@ -21,12 +24,17 @@ def get_user(token):
 
 
 class LabelAPIView(generics.GenericAPIView):
+    """
+    Class for Label
+    """
     serializer_class = LabelSerializer
     queryset = Labels.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        user = request.user
+        """
+        function for getting all labels
+        """
         try:
             data = Labels.objects.all()
             serializer = LabelSerializer(data, many=True)
@@ -42,6 +50,9 @@ class LabelAPIView(generics.GenericAPIView):
                              }, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
+        """
+        function for creating label
+        """
         user = request.user
         try:
             serializer = LabelSerializer(data=request.data, partial=True)
@@ -66,6 +77,9 @@ class LabelAPIView(generics.GenericAPIView):
                              }, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        """
+        function for deleting label
+        """
         try:
             data = Labels.objects.get(pk=pk)
             data.delete()
